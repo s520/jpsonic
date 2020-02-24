@@ -35,6 +35,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 import static org.airsonic.player.dao.MediaFileDao.getGenreColoms;
 import static org.airsonic.player.dao.MediaFileDao.getQueryColoms;
@@ -223,11 +224,49 @@ public class JMediaFileDao extends AbstractDao {
         return deligate.getMediaFile(path);
     }
 
-    public List<MediaFile> getRandomSongs(RandomSearchCriteria criteria, final String username) {
+    public List<MediaFile> getRandomSongs(RandomSearchCriteria criteria, final String username, // @formatter:off
+            BiFunction< /** range */ Integer, /** limit */ Integer, List<Integer>> randomCallback) { // @formatter:on
+
         if (criteria.getMusicFolders().isEmpty()) {
             return Collections.emptyList();
         }
 
+        /* Run the query twice. */
+
+        final String randomView = createRandomQuery(criteria);
+
+        Map<String, Object> args = toMap(criteria, username);
+
+        int countAll = namedQueryForInt("select count(*) from " + randomView, 0, args);
+        if (0 == countAll) {
+            return Collections.emptyList();
+        }
+
+        List<Integer> randomRownum = randomCallback.apply(countAll, criteria.getCount());
+        args.put("randomRownum", randomRownum);
+        args.put("limit", criteria.getCount());
+
+        List<MediaFile> tmpResult = namedQuery(// @formatter:off
+                "select " + getQueryColoms() + ", irownum from" +
+                "    (select (select count(id) from media_file where id < random_view.id and type = 'MUSIC' ) as irownum, * " +
+                "        from " + randomView + ")as random_view_with_rownum" +
+                " where random_view_with_rownum.irownum in ( :randomRownum ) limit :limit ", iRowMapper, args); // @formatter:on
+
+        Map<Integer, MediaFile> tmpResultMap = tmpResult.stream().collect(Collectors.toMap(m -> m.getRownum(), m -> m));
+
+        /* Restore the order */
+        List<MediaFile> result = new ArrayList<>();
+        randomRownum.forEach(i -> {
+            MediaFile m = tmpResultMap.get(i);
+            if (!isEmpty(m)) {
+                result.add(m);
+            }
+        });
+
+        return Collections.unmodifiableList(result);
+    }
+
+    private final Map<String, Object> toMap(RandomSearchCriteria criteria, String username) {
         Map<String, Object> args = new HashMap<>();
         args.put("folders", MusicFolder.toPathList(criteria.getMusicFolders()));
         args.put("username", username);
@@ -243,11 +282,15 @@ public class JMediaFileDao extends AbstractDao {
         args.put("starred", criteria.isShowStarredSongs());
         args.put("unstarred", criteria.isShowUnstarredSongs());
         args.put("format", criteria.getFormat());
+        return args;
+    }
+
+    private final String createRandomQuery(RandomSearchCriteria criteria) {
 
         boolean joinAlbumRating = (criteria.getMinAlbumRating() != null || criteria.getMaxAlbumRating() != null);
         boolean joinStarred = (criteria.isShowStarredSongs() ^ criteria.isShowUnstarredSongs());
 
-        String query = "select " + prefix(getQueryColoms(), "media_file") + " from media_file ";
+        String query = "(select " + prefix(getQueryColoms(), "media_file") + " from media_file ";
 
         if (joinStarred) {
             query += "left outer join starred_media_file on media_file.id = starred_media_file.media_file_id and starred_media_file.username = :username ";
@@ -324,11 +367,11 @@ public class JMediaFileDao extends AbstractDao {
             query += " and starred_media_file.id is null";
         }
 
-        query += " order by rand()";
+        query += " order by _order, album_artist_reading, album_reading";
 
-        query += " limit " + criteria.getCount();
+        query += " ) random_view ";
 
-        return namedQuery(query, rowMapper, args);
+        return query;
     }
 
     public List<MediaFile> getRandomSongsForAlbumArtist(// @formatter:off

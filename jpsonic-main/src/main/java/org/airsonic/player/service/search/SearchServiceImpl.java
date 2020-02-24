@@ -36,6 +36,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -278,7 +279,17 @@ public class SearchServiceImpl implements SearchService {
 
     @Override
     public List<MediaFile> getRandomSongs(RandomSearchCriteria criteria, String username) {
-        return mediaFileDao.getRandomSongs(criteria, username);
+        BiFunction<Integer, Integer, List<Integer>> randomCallback = (range, limit) -> {
+            List<Integer> randoms = new ArrayList<>();
+            while (randoms.size() < Math.min(limit, range)) {
+                Integer random = util.nextInt.apply(range);
+                if (!randoms.contains(random)) {
+                    randoms.add(random);
+                }
+            }
+            return randoms;
+        };
+        return mediaFileDao.getRandomSongs(criteria, username, randomCallback);
     }
 
     private final int min(Integer... integers) {
