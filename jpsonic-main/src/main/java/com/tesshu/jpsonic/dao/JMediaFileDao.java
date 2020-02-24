@@ -23,6 +23,7 @@ import org.airsonic.player.dao.MediaFileDao;
 import org.airsonic.player.domain.Genre;
 import org.airsonic.player.domain.MediaFile;
 import org.airsonic.player.domain.MusicFolder;
+import org.airsonic.player.domain.RandomSearchCriteria;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.DependsOn;
@@ -220,6 +221,114 @@ public class JMediaFileDao extends AbstractDao {
 
     public MediaFile getMediaFile(String path) {
         return deligate.getMediaFile(path);
+    }
+
+    public List<MediaFile> getRandomSongs(RandomSearchCriteria criteria, final String username) {
+        if (criteria.getMusicFolders().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<String, Object> args = new HashMap<>();
+        args.put("folders", MusicFolder.toPathList(criteria.getMusicFolders()));
+        args.put("username", username);
+        args.put("fromYear", criteria.getFromYear());
+        args.put("toYear", criteria.getToYear());
+        args.put("genres", criteria.getGenres()); // TODO to be revert
+        args.put("minLastPlayed", criteria.getMinLastPlayedDate());
+        args.put("maxLastPlayed", criteria.getMaxLastPlayedDate());
+        args.put("minAlbumRating", criteria.getMinAlbumRating());
+        args.put("maxAlbumRating", criteria.getMaxAlbumRating());
+        args.put("minPlayCount", criteria.getMinPlayCount());
+        args.put("maxPlayCount", criteria.getMaxPlayCount());
+        args.put("starred", criteria.isShowStarredSongs());
+        args.put("unstarred", criteria.isShowUnstarredSongs());
+        args.put("format", criteria.getFormat());
+
+        boolean joinAlbumRating = (criteria.getMinAlbumRating() != null || criteria.getMaxAlbumRating() != null);
+        boolean joinStarred = (criteria.isShowStarredSongs() ^ criteria.isShowUnstarredSongs());
+
+        String query = "select " + prefix(getQueryColoms(), "media_file") + " from media_file ";
+
+        if (joinStarred) {
+            query += "left outer join starred_media_file on media_file.id = starred_media_file.media_file_id and starred_media_file.username = :username ";
+        }
+
+        if (joinAlbumRating) {
+            query += "left outer join media_file media_album on media_album.type = 'ALBUM' and media_album.album = media_file.album and media_album.artist = media_file.artist ";
+            query += "left outer join user_rating on user_rating.path = media_album.path and user_rating.username = :username ";
+        }
+
+        query += " where media_file.present and media_file.type = 'MUSIC'";
+
+        if (!criteria.getMusicFolders().isEmpty()) {
+            query += " and media_file.folder in (:folders)";
+        }
+
+        if (criteria.getGenres() != null) { // TODO to be revert
+            query += " and media_file.genre in (:genres)";
+        }
+
+        if (criteria.getFormat() != null) {
+            query += " and media_file.format = :format";
+        }
+
+        if (criteria.getFromYear() != null) {
+            query += " and media_file.year >= :fromYear";
+        }
+
+        if (criteria.getToYear() != null) {
+            query += " and media_file.year <= :toYear";
+        }
+
+        if (criteria.getMinLastPlayedDate() != null) {
+            query += " and media_file.last_played >= :minLastPlayed";
+        }
+
+        if (criteria.getMaxLastPlayedDate() != null) {
+            if (criteria.getMinLastPlayedDate() == null) {
+                query += " and (media_file.last_played is null or media_file.last_played <= :maxLastPlayed)";
+            } else {
+                query += " and media_file.last_played <= :maxLastPlayed";
+            }
+        }
+
+        if (criteria.getMinAlbumRating() != null) {
+            query += " and user_rating.rating >= :minAlbumRating";
+        }
+
+        if (criteria.getMaxAlbumRating() != null) {
+            if (criteria.getMinAlbumRating() == null) {
+                query += " and (user_rating.rating is null or user_rating.rating <= :maxAlbumRating)";
+            } else {
+                query += " and user_rating.rating <= :maxAlbumRating";
+            }
+        }
+
+        if (criteria.getMinPlayCount() != null) {
+            query += " and media_file.play_count >= :minPlayCount";
+        }
+
+        if (criteria.getMaxPlayCount() != null) {
+            if (criteria.getMinPlayCount() == null) {
+                query += " and (media_file.play_count is null or media_file.play_count <= :maxPlayCount)";
+            } else {
+                query += " and media_file.play_count <= :maxPlayCount";
+            }
+        }
+
+        if (criteria.isShowStarredSongs() && !criteria.isShowUnstarredSongs()) {
+            query += " and starred_media_file.id is not null";
+        }
+
+        if (criteria.isShowUnstarredSongs() && !criteria.isShowStarredSongs()) {
+            query += " and starred_media_file.id is null";
+        }
+
+        query += " order by rand()";
+
+        query += " limit " + criteria.getCount();
+
+        return namedQuery(query, rowMapper, args);
     }
 
     public List<MediaFile> getRandomSongsForAlbumArtist(// @formatter:off

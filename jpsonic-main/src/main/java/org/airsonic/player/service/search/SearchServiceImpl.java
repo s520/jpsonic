@@ -276,6 +276,11 @@ public class SearchServiceImpl implements SearchService {
         return result;
     }
 
+    @Override
+    public List<MediaFile> getRandomSongs(RandomSearchCriteria criteria, String username) {
+        return mediaFileDao.getRandomSongs(criteria, username);
+    }
+
     private final int min(Integer... integers) {
         int min = Integer.MAX_VALUE;
         for (int i : integers) {
@@ -283,7 +288,7 @@ public class SearchServiceImpl implements SearchService {
         }
         return min;
     }
-    
+
     @Override
     public List<MediaFile> getRandomSongsByArtist(Artist artist, int count, int offset, int casheMax, List<MusicFolder> musicFolders) {
 

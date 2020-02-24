@@ -19,6 +19,8 @@
  */
 package org.airsonic.player.dao;
 
+import com.tesshu.jpsonic.dao.JMediaFileDao;
+
 import org.airsonic.player.domain.Genre;
 import org.airsonic.player.domain.MediaFile;
 import org.airsonic.player.domain.MusicFolder;
@@ -540,6 +542,8 @@ public class MediaFileDao extends AbstractDao {
                           rowMapper, args);
     }
 
+    /**  @deprecated Use {@link JMediaFileDao}{@link #getRandomSongs(RandomSearchCriteria, String)}  */
+    @Deprecated
     public List<MediaFile> getRandomSongs(RandomSearchCriteria criteria, final String username) {
         if (criteria.getMusicFolders().isEmpty()) {
             return Collections.emptyList();

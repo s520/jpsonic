@@ -91,6 +91,16 @@ public interface SearchService {
     List<MediaFile> getRandomSongs(int count, int offset, int casheMax, List<MusicFolder> musicFolders);
 
     /**
+     * Returns the results of a random search with advanced criteria.
+     * 
+     * @since 107.1.0
+     * @param criteria Search criteria
+     * @param username user name
+     * @return Results of conditional random search
+     */
+    List<MediaFile> getRandomSongs(RandomSearchCriteria criteria, String username);
+
+    /**
      * Returns random songs.
      * The song returned by this list is limited to MesiaType=SONG.
      * In other words, PODCAST, AUDIOBOOK and VIDEO are not included.

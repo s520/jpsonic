@@ -352,8 +352,11 @@ public class MediaFileService {
 
     /**
      * Returns random songs matching search criteria.
+     * 
+     * @deprecated Use {@link SearchService}{@link #getRandomSongs(RandomSearchCriteria, String)}
      *
      */
+    @Deprecated
     public List<MediaFile> getRandomSongs(RandomSearchCriteria criteria, String username) {
         return mediaFileDao.getRandomSongs(criteria, username);
     }

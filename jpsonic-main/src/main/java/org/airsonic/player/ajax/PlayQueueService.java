@@ -153,7 +153,7 @@ public class PlayQueueService {
         PlayQueue playQueue = player.getPlayQueue();
         playQueue.setInternetRadio(null);
         if (playQueue.getRandomSearchCriteria() != null) {
-            playQueue.addFiles(true, mediaFileService.getRandomSongs(playQueue.getRandomSearchCriteria(), username));
+            playQueue.addFiles(true, searchService.getRandomSongs(playQueue.getRandomSearchCriteria(), username));
         }
         return convert(request, player, false);
     }

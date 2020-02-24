@@ -20,8 +20,8 @@
 package org.airsonic.player.controller;
 
 import org.airsonic.player.domain.*;
-import org.airsonic.player.service.MediaFileService;
 import org.airsonic.player.service.PlayerService;
+import org.airsonic.player.service.SearchService;
 import org.airsonic.player.service.SecurityService;
 import org.airsonic.player.service.SettingsService;
 import org.airsonic.player.service.search.IndexManager;
@@ -56,7 +56,7 @@ public class RandomPlayQueueController {
     @Autowired
     private PlayerService playerService;
     @Autowired
-    private MediaFileService mediaFileService;
+    private SearchService searchService;
     @Autowired
     private SecurityService securityService;
     @Autowired
@@ -253,7 +253,7 @@ public class RandomPlayQueueController {
         User user = securityService.getCurrentUser(request);
         Player player = playerService.getPlayer(request, response);
         PlayQueue playQueue = player.getPlayQueue();
-        playQueue.addFiles(shouldAddToPlayList, mediaFileService.getRandomSongs(criteria, user.getUsername()));
+        playQueue.addFiles(shouldAddToPlayList, searchService.getRandomSongs(criteria, user.getUsername()));
 
         if (autoRandom != null) {
             playQueue.setRandomSearchCriteria(criteria);
