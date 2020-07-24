@@ -22,7 +22,6 @@ package org.airsonic.player.service;
 import org.airsonic.player.service.upnp.ApacheUpnpServiceConfiguration;
 import org.airsonic.player.service.upnp.CustomContentDirectory;
 import org.airsonic.player.service.upnp.MSMediaReceiverRegistrarService;
-import org.fourthline.cling.DefaultUpnpServiceConfiguration;
 import org.fourthline.cling.UpnpService;
 import org.fourthline.cling.UpnpServiceConfiguration;
 import org.fourthline.cling.UpnpServiceImpl;
@@ -145,7 +144,7 @@ public class UPnPService {
     private void createService() {
         synchronized (LOCK) {
             UpnpServiceConfiguration upnpConf = 0 < SettingsService.getDefaultUPnPPort()
-                    ? new DefaultUpnpServiceConfiguration(SettingsService.getDefaultUPnPPort())
+                    ? new ApacheUpnpServiceConfiguration(SettingsService.getDefaultUPnPPort())
                     : new ApacheUpnpServiceConfiguration();
             upnpService = new UpnpServiceImpl(upnpConf);
             // Asynch search for other devices (most importantly UPnP-enabled routers for port-mapping)
